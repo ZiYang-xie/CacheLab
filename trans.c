@@ -13,6 +13,7 @@
 int is_transpose(int M, int N, int A[N][M], int B[M][N]);
 void trans(int M, int N, int A[N][M], int B[M][N]);
 
+void transpose_4x4(int M, int N, int A[N][M], int B[M][N]);
 void transpose_32x32(int M, int N, int A[N][M], int B[M][N]);
 void transpose_64x64(int M, int N, int A[N][M], int B[M][N]);
 void transpose_61x67(int M, int N, int A[N][M], int B[M][N]);
@@ -25,7 +26,7 @@ void transpose_61x67(int M, int N, int A[N][M], int B[M][N]);
  */
 char transpose_submit_desc[] = "Transpose submission";
 void transpose_submit(int M, int N, int A[N][M], int B[M][N])
-{   
+{
     if(M == 32 && N == 32)
         transpose_32x32(M, N, A, B);    
     else if(M == 64 && N == 64)
@@ -35,10 +36,24 @@ void transpose_submit(int M, int N, int A[N][M], int B[M][N])
 		
 }
 
+void transpose_4x4(int M, int N, int A[N][M], int B[M][N])
+{
+    int tmp0, tmp1, tmp2, tmp3, tmp4, tmp5, tmp6, tmp7;
+
+	for(int x = 0; x < 3; x += 2)
+	{
+		tmp0 = A[x][0], tmp1 = A[x][1], tmp2 = A[x][2], tmp3 = A[x][3];
+		tmp4 = A[x + 1][0], tmp5 = A[x + 1][1], tmp6 = A[x + 1][2], tmp7 = A[x + 1][3];
+
+		B[0][x] = tmp0, B[1][x] = tmp1, B[2][x] = tmp2, B[3][x] = tmp3; 
+		B[0][x + 1] = tmp4, B[1][x + 1] = tmp5, B[2][x + 1] = tmp6, B[3][x + 1] = tmp7; 
+	}
+}
+
 void transpose_32x32(int M, int N, int A[N][M], int B[M][N])
 {
     int i, j, x, y;
-    int tmp0, tmp1, tmp2, tmp3, tmp4, tmp5, tmp6, tmp7;
+    int tmp, tmp0, tmp1, tmp2, tmp3, tmp4, tmp5, tmp6, tmp7;
 
     for(i = 0; i < N; i += 8)
         for(j = 0; j < M; j += 8)
@@ -55,7 +70,9 @@ void transpose_32x32(int M, int N, int A[N][M], int B[M][N])
 				else 
 				{
 					for(y = j; y < j + 8; ++y)
-						B[y][x] = A[x][y];
+					{
+						tmp = A[x][y], B[y][x] = tmp;
+					}
 				}
 			}
 }
@@ -106,8 +123,7 @@ void transpose_61x67(int M, int N, int A[N][M], int B[M][N])
 				{
 					tmp = A[x][y];
 					B[y][x] = tmp; 
-				}
-			
+				}		
 }
 
 /* 
@@ -129,7 +145,6 @@ void trans(int M, int N, int A[N][M], int B[M][N])
             B[j][i] = tmp;
         }
     }    
-
 }
 
 /*

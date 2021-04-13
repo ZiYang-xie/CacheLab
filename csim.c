@@ -25,15 +25,15 @@ typedef struct
     int valid; // 0/1 : invalid/valid
     int tag;
     int LRUstamp; // 越小代表越早使用，可以evict
-    // int* data; B（2^b） 字节
-} Block_t;
+    // int* Block; // B（2^b） 字节
+} Line_t;
 
 // s个Set组成Cache
 typedef struct {
     int S;
     int E; // Line 数组大小
     int B;
-    Block_t*** cache_;
+    Line_t*** cache_;
 } Cache_t; 
 
 Cache_t Cache;
@@ -41,7 +41,7 @@ Cache_t Cache;
 /* Usage */
 void printHelp()
 {
-    printf("Usage: ./csim-ref [-hv] -s <num> -E <num> -b <num> -t <file>\n");
+    printf("Usage: ./csim [-hv] -s <num> -E <num> -b <num> -t <file>\n");
     printf("Options:\n");
     printf("  -h         Print this help message.\n");
     printf("  -v         Optional verbose flag.\n");
@@ -54,12 +54,12 @@ void printHelp()
 /* 分配 Cache */
 void mallocCache()
 {
-    Cache.cache_ = (Block_t***)malloc(Cache.S* sizeof(Block_t **));
+    Cache.cache_ = (Line_t***)malloc(Cache.S* sizeof(Line_t **));
     for(int i = 0; i < Cache.S; ++i)
-        Cache.cache_[i] = (Block_t **)malloc(Cache.E * sizeof(Block_t *));
+        Cache.cache_[i] = (Line_t **)malloc(Cache.E * sizeof(Line_t *));
     for(int i = 0; i < Cache.S; ++i)
         for(int j = 0; j < Cache.E; ++j)
-            Cache.cache_[i][j] = (Block_t *)malloc(sizeof(Block_t));
+            Cache.cache_[i][j] = (Line_t *)malloc(sizeof(Line_t));
     for(int i = 0; i < Cache.S; ++i)
         for(int j = 0; j < Cache.E; ++j) {
             Cache.cache_[i][j]->valid = 0;
@@ -81,7 +81,7 @@ void freeCache()
 
 void initCache(const int s, const int E, const int b) 
 {
-    Cache.S = s, Cache.E = E, Cache.B = b;
+    Cache.S = (1 << s), Cache.E = E, Cache.B = (1 << b);
 }
 
 /* 获得 Valid bit */
@@ -116,6 +116,7 @@ void Eviction(const int s, const int E, const int tag)
 /* 更新LRU，越小越早使用 */
 void lruUpdate(const int s, const int E)
 {
+    Cache.cache_[s][E]->LRUstamp = 1e9;
     for(int i = 0; i < Cache.E; ++i)
     {
         if(i != E)
@@ -129,7 +130,6 @@ void WriteCache(const int s, const int E, const int tag)
     Eviction(s, E, tag);
     Cache.cache_[s][E]->valid = 1;
     Cache.cache_[s][E]->tag = tag;
-    Cache.cache_[s][E]->LRUstamp = 1e9;
     lruUpdate(s, E);
 }
 
@@ -158,7 +158,7 @@ void getAns(const int s, const int tag)
         Hit++;
         if(verbose)
             printf("hit ");
-        WriteCache(s, hit_flag, tag);
+        lruUpdate(s, hit_flag);
     }
     else  {
         Miss++;
@@ -216,7 +216,7 @@ int main(int argc, char *const argv[])
         exit(-1);
     }
 
-    initCache(1 << s, E, 1 << b);
+    initCache(s, E, b);
     mallocCache();
     
     while(fscanf(Path, "%s %x %c %d", 
